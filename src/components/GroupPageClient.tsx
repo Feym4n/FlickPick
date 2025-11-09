@@ -113,7 +113,6 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
             const effectiveCreator = participants.includes(creator) 
               ? creator 
               : (participants.length > 0 ? participants[0] : null);
-            setGroupCreator(effectiveCreator);
             setIsCreator(participantName === effectiveCreator);
           }
         } catch (error) {
