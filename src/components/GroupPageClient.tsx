@@ -53,11 +53,11 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     startVoting: startVotingRealtime
   } = useGroupSocket(groupCode, participantName);
 
-  // Используем участников из WebSocket, если они есть, иначе из начальной загрузки
-  const displayParticipants = participants.length > 0 ? participants : initialParticipants;
+  // Приоритет: WebSocket данные, если они есть и socket подключен, иначе начальные данные
+  const displayParticipants = (participants.length > 0 && isConnected) ? participants : initialParticipants;
   
-  // Используем фильмы из WebSocket, если они есть, иначе из начальной загрузки
-  const displayFilms = films.length > 0 ? films : initialFilms;
+  // Приоритет: WebSocket данные, если они есть и socket подключен, иначе начальные данные
+  const displayFilms = (films.length > 0 && isConnected) ? films : initialFilms;
   
   // Периодическая синхронизация, если WebSocket не подключен
   useEffect(() => {
