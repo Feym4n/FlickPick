@@ -54,11 +54,10 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   } = useGroupSocket(groupCode, participantName);
 
   // Используем участников из WebSocket, если они есть, иначе из начальной загрузки
-  // Если WebSocket подключен, приоритет у него, иначе используем начальные данные
-  const displayParticipants = (isConnected && participants.length > 0) ? participants : initialParticipants;
+  const displayParticipants = participants.length > 0 ? participants : initialParticipants;
   
   // Используем фильмы из WebSocket, если они есть, иначе из начальной загрузки
-  const displayFilms = (isConnected && films.length > 0) ? films : initialFilms;
+  const displayFilms = films.length > 0 ? films : initialFilms;
   
   // Периодическая синхронизация, если WebSocket не подключен
   useEffect(() => {
@@ -81,11 +80,24 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
         } catch (error) {
           console.error('Ошибка синхронизации данных:', error);
         }
-      }, 5000); // Синхронизация каждые 5 секунд, если WebSocket не работает
+      }, 2000); // Синхронизация каждые 2 секунды, если WebSocket не работает
       
       return () => clearInterval(syncInterval);
     }
   }, [isConnected, groupCode]);
+  
+  // Обновляем начальные данные при получении событий WebSocket
+  useEffect(() => {
+    if (participants.length > 0) {
+      setInitialParticipants(participants);
+    }
+  }, [participants]);
+  
+  useEffect(() => {
+    if (films.length > 0) {
+      setInitialFilms(films);
+    }
+  }, [films]);
 
   // Загружаем данные группы для определения создателя
   useEffect(() => {
@@ -147,21 +159,23 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     }
   }, [groupCode, participantName]);
 
-  // Обработчик событий WebSocket для обновления фильмов
+  // Обработчик событий WebSocket для обновления участников
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    const handleFilmAdded = (data: { film: Film; films: Film[] }) => {
-      // Обновляем начальные фильмы, если WebSocket еще не обновил состояние
-      if (data.films && data.films.length > 0) {
-        setInitialFilms(data.films);
+    const handleParticipantJoined = (data: { participant: string; participants: string[] }) => {
+      // Сразу обновляем начальные данные для мгновенного отображения
+      if (data.participants && data.participants.length > 0) {
+        setInitialParticipants(data.participants);
       }
     };
 
-    socket.on('group:film-added', handleFilmAdded);
+    socket.on('group:participant-joined', handleParticipantJoined);
+    socket.on('group:participant-left', handleParticipantJoined);
 
     return () => {
-      socket.off('group:film-added', handleFilmAdded);
+      socket.off('group:participant-joined', handleParticipantJoined);
+      socket.off('group:participant-left', handleParticipantJoined);
     };
   }, [socket, isConnected]);
 
