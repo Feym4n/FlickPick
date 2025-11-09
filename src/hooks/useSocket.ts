@@ -209,9 +209,20 @@ export function useGroupSocket(groupCode: string, participantName: string) {
     socket.on('group:closed', handleGroupClosed);
     socket.on('group:reset', handleGroupReset);
 
-    // Подключаемся к группе сразу, не ждем isConnected
-    // Socket.IO сам обработает отправку при подключении
-    socket.emit('group:join', { groupCode, participantName });
+    // Функция для подключения к группе
+    const joinGroup = () => {
+      if (socket.connected) {
+        socket.emit('group:join', { groupCode, participantName });
+      }
+    };
+
+    // Подключаемся к группе при подключении socket
+    if (socket.connected) {
+      joinGroup();
+    } else {
+      // Если еще не подключен, ждем подключения
+      socket.once('connect', joinGroup);
+    }
 
     // Очистка при размонтировании
     return () => {

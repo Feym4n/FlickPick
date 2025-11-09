@@ -87,6 +87,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   }, [isConnected, groupCode]);
   
   // Обновляем начальные данные при получении событий WebSocket
+  // Это гарантирует, что данные всегда актуальны, даже если WebSocket отключится
   useEffect(() => {
     if (participants.length > 0) {
       setInitialParticipants(participants);
@@ -98,6 +99,33 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       setInitialFilms(films);
     }
   }, [films]);
+
+  // Синхронизация при подключении WebSocket
+  useEffect(() => {
+    if (isConnected && socket) {
+      // При подключении запрашиваем актуальные данные
+      const syncData = async () => {
+        try {
+          const response = await fetch(`/api/groups-firebase?code=${groupCode}`);
+          const data = await response.json();
+          if (data.success) {
+            setInitialParticipants(data.data.participants || []);
+            
+            const filmsResponse = await fetch(`/api/groups-firebase/${groupCode}/films`);
+            if (filmsResponse.ok) {
+              const filmsData = await filmsResponse.json();
+              if (filmsData.success && filmsData.data) {
+                setInitialFilms(filmsData.data);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка синхронизации при подключении:', error);
+        }
+      };
+      syncData();
+    }
+  }, [isConnected, socket, groupCode]);
 
   // Загружаем данные группы для определения создателя
   useEffect(() => {
