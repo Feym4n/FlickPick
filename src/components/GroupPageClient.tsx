@@ -180,12 +180,13 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   }, [socket, isConnected]);
 
   // Обработчик события смены создателя через WebSocket
+  // Убрали проверку isConnected
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket) return;
 
-      const handleCreatorChanged = (data: { newCreator: string; message: string }) => {
-        console.log('Creator changed event received:', data);
-        setIsCreator(participantName === data.newCreator);
+    const handleCreatorChanged = (data: { newCreator: string; message: string }) => {
+      console.log('Creator changed event received:', data);
+      setIsCreator(participantName === data.newCreator);
       // Перезагружаем данные группы для синхронизации
       const loadGroup = async () => {
         try {
@@ -211,16 +212,17 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     return () => {
       socket.off('group:creator-changed', handleCreatorChanged);
     };
-  }, [socket, isConnected, groupCode, participantName]);
+  }, [socket, groupCode, participantName]);
 
   const handleAddFilm = async (film: KinopoiskFilm) => {
     try {
-      // Используем WebSocket для добавления фильма в реальном времени
-      if (isConnected) {
+      // Всегда пытаемся использовать WebSocket, если он есть
+      // Socket.IO сам обработает очередь, если еще не подключен
+      if (socket) {
         addFilmRealtime(film);
         setShowFilmSearch(false);
       } else {
-        // Fallback на обычный API, если WebSocket не подключен
+        // Fallback на обычный API, если socket вообще нет
         const response = await fetch(`/api/groups-firebase/${groupCode}/films`, {
           method: 'POST',
           headers: {
@@ -249,8 +251,9 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       return;
     }
     
-    // Используем WebSocket для начала голосования (все участники перейдут автоматически)
-    if (isConnected && startVotingRealtime) {
+    // Всегда пытаемся использовать WebSocket, если он есть
+    // Socket.IO сам обработает отправку при подключении
+    if (socket && startVotingRealtime) {
       startVotingRealtime(displayFilms);
     } else {
       // Fallback: переход только для текущего пользователя

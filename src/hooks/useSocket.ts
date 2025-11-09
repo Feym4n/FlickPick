@@ -192,6 +192,12 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       window.location.href = `/group/${groupCode}?nickname=${encodeURIComponent(nickname)}`;
     };
 
+    // Регистрируем все обработчики сразу
+    socket.on('voting:started', handleVotingStarted);
+    socket.on('group:participant-joined', handleParticipantJoined);
+    socket.on('group:participant-left', handleParticipantLeft);
+    socket.on('group:film-added', handleFilmAdded);
+    socket.on('group:film-removed', handleFilmRemoved);
     socket.on('voting:vote-cast', handleVoteCast);
     socket.on('voting:completed', handleVotingCompleted);
     socket.on('group:creator-changed', handleCreatorChanged);
@@ -200,16 +206,13 @@ export function useGroupSocket(groupCode: string, participantName: string) {
     socket.on('group:closed', handleGroupClosed);
     socket.on('group:reset', handleGroupReset);
 
-    // Подключаемся к группе при подключении WebSocket
-    if (isConnected) {
-      socket.emit('group:join', { groupCode, participantName });
-    }
+    // Подключаемся к группе сразу, не ждем isConnected
+    // Socket.IO сам обработает отправку при подключении
+    socket.emit('group:join', { groupCode, participantName });
 
     // Очистка при размонтировании
     return () => {
-      if (isConnected) {
-        socket.emit('group:leave', { groupCode, participantName });
-      }
+      socket.emit('group:leave', { groupCode, participantName });
       socket.off('group:participant-joined', handleParticipantJoined);
       socket.off('group:participant-left', handleParticipantLeft);
       socket.off('group:film-added', handleFilmAdded);
@@ -223,7 +226,7 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       socket.off('group:closed', handleGroupClosed);
       socket.off('group:reset', handleGroupReset);
     };
-  }, [socket, isConnected, groupCode, participantName]);
+  }, [socket, groupCode, participantName]);
 
   const addFilm = (film: any) => {
     if (socket) {
