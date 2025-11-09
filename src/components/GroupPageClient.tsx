@@ -454,14 +454,14 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
           >
             <Button
               onClick={handleStartVoting}
-              disabled={films.length < 2 || participants.length < 2}
+              disabled={displayFilms.length < 2 || displayParticipants.length < 2}
               className="w-full py-4 text-lg bg-pink-600 hover:bg-pink-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl shadow-lg transition"
             >
               <Play className="h-5 w-5 mr-2" />
               Начать выбор фильма
             </Button>
             <p className="text-xs text-gray-400 mt-2 text-center">
-              {films.length < 2 || participants.length < 2
+              {displayFilms.length < 2 || displayParticipants.length < 2
                 ? 'Нужно минимум 2 участника и 2 фильма для начала голосования'
                 : 'Готово к началу голосования'}
             </p>
