@@ -160,8 +160,9 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   }, [groupCode, participantName]);
 
   // Обработчик событий WebSocket для обновления участников
+  // Убрали проверку isConnected - обработчики работают всегда
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket) return;
 
     const handleParticipantJoined = (data: { participant: string; participants: string[] }) => {
       // Сразу обновляем начальные данные для мгновенного отображения
@@ -170,14 +171,20 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       }
     };
 
+    const handleParticipantLeft = (data: { participant: string; participants: string[] }) => {
+      if (data.participants) {
+        setInitialParticipants(data.participants);
+      }
+    };
+
     socket.on('group:participant-joined', handleParticipantJoined);
-    socket.on('group:participant-left', handleParticipantJoined);
+    socket.on('group:participant-left', handleParticipantLeft);
 
     return () => {
       socket.off('group:participant-joined', handleParticipantJoined);
-      socket.off('group:participant-left', handleParticipantJoined);
+      socket.off('group:participant-left', handleParticipantLeft);
     };
-  }, [socket, isConnected]);
+  }, [socket]);
 
   // Обработчик события смены создателя через WebSocket
   // Убрали проверку isConnected
