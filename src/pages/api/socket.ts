@@ -169,17 +169,9 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
         // Используем список участников из БД как источник истины
         const finalParticipants = dbParticipants;
 
-        // Уведомляем других участников группы только если это новое WebSocket соединение
-        // (не переподключение существующего участника)
-        if (!wasAlreadyConnected) {
-          socket.to(sanitizedCode).emit('group:participant-joined', {
-            participant: sanitizedParticipantName,
-            participants: finalParticipants
-          });
-        }
-
-        // Отправляем текущий список участников (всегда, чтобы синхронизировать состояние)
-        socket.emit('group:participant-joined', {
+        // ВАЖНО: Всегда отправляем актуальный список участников ВСЕМ участникам группы
+        // Это гарантирует синхронизацию данных у всех пользователей
+        io.to(sanitizedCode).emit('group:participant-joined', {
           participant: sanitizedParticipantName,
           participants: finalParticipants
         });
