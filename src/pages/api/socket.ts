@@ -311,8 +311,8 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
         // Проверяем, является ли пользователь создателем группы или эффективным создателем
         // (если создатель вышел, права передаются первому участнику)
         const participants = group.participants || [];
-        const effectiveCreator = participants.includes(group.createdBy) 
-          ? group.createdBy 
+        const effectiveCreator = (group.createdBy && participants.includes(group.createdBy))
+          ? group.createdBy
           : (participants.length > 0 ? participants[0] : null);
         
         if (!effectiveCreator || socket.data.participantName !== effectiveCreator) {
