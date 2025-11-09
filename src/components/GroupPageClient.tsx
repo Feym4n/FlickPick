@@ -18,6 +18,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   const [copied, setCopied] = useState(false);
   const [showFilmSearch, setShowFilmSearch] = useState(false);
   const [initialParticipants, setInitialParticipants] = useState<string[]>([]);
+  const [initialFilms, setInitialFilms] = useState<any[]>([]);
   
   // Получаем никнейм из URL параметров, sessionStorage или используем дефолтный
   const [participantName] = useState(() => {
@@ -54,6 +55,9 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
 
   // Используем участников из WebSocket, если они есть, иначе из начальной загрузки
   const displayParticipants = participants.length > 0 ? participants : initialParticipants;
+  
+  // Используем фильмы из WebSocket, если они есть, иначе из начальной загрузки
+  const displayFilms = films.length > 0 ? films : initialFilms;
 
   // Загружаем данные группы для определения создателя
   useEffect(() => {
@@ -68,6 +72,19 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
           
           // Сохраняем участников для начального отображения
           setInitialParticipants(participants);
+          
+          // Загружаем фильмы для начального отображения
+          try {
+            const filmsResponse = await fetch(`/api/groups-firebase/${groupCode}/films`);
+            if (filmsResponse.ok) {
+              const filmsData = await filmsResponse.json();
+              if (filmsData.success && filmsData.data) {
+                setInitialFilms(filmsData.data);
+              }
+            }
+          } catch (err) {
+            console.error('Ошибка загрузки фильмов:', err);
+          }
           
           // Если создатель не в списке участников, передаем права первому участнику
           let effectiveCreator = creator;
@@ -101,6 +118,24 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       loadGroup();
     }
   }, [groupCode, participantName]);
+
+  // Обработчик событий WebSocket для обновления фильмов
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleFilmAdded = (data: { film: any; films: any[] }) => {
+      // Обновляем начальные фильмы, если WebSocket еще не обновил состояние
+      if (data.films && data.films.length > 0) {
+        setInitialFilms(data.films);
+      }
+    };
+
+    socket.on('group:film-added', handleFilmAdded);
+
+    return () => {
+      socket.off('group:film-added', handleFilmAdded);
+    };
+  }, [socket, isConnected]);
 
   // Обработчик события смены создателя через WebSocket
   useEffect(() => {
@@ -167,14 +202,14 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   };
 
   const handleStartVoting = () => {
-    if (films.length === 0) {
+    if (displayFilms.length === 0) {
       alert('Добавьте хотя бы один фильм перед началом голосования');
       return;
     }
     
     // Используем WebSocket для начала голосования (все участники перейдут автоматически)
     if (isConnected && startVotingRealtime) {
-      startVotingRealtime(films);
+      startVotingRealtime(displayFilms);
     } else {
       // Fallback: переход только для текущего пользователя
       window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
@@ -281,7 +316,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
              <div className="flex items-center">
                <FilmIcon className="h-5 w-5 mr-2" />
                <h2 className="text-lg font-semibold">Фильмы</h2>
-               <span className="ml-2 text-sm text-gray-400">({films.length})</span>
+               <span className="ml-2 text-sm text-gray-400">({displayFilms.length})</span>
              </div>
             <Button
               onClick={() => setShowFilmSearch(!showFilmSearch)}
@@ -307,7 +342,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
           
           {/* Список фильмов */}
           <div className="bg-gray-800 rounded-xl p-4 min-h-[200px]">
-            {films.length === 0 ? (
+            {displayFilms.length === 0 ? (
                <div className="flex items-center justify-center h-48">
                  <div className="text-center">
                    <FilmIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
@@ -319,7 +354,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
                </div>
             ) : (
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                 {films.map((film) => (
+                 {displayFilms.map((film) => (
                    <div key={film.id} className="max-w-xs mx-auto">
                      <div className="bg-gray-700 rounded-xl overflow-hidden shadow-lg">
                        {/* Постер */}

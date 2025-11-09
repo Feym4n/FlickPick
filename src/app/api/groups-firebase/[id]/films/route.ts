@@ -1,6 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGroupByCode, addFilmToGroup, getFilmsByGroup } from '@/lib/database';
 
+// GET /api/groups-firebase/[id]/films - получение фильмов группы
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: groupCode } = await params;
+    
+    const group = await getGroupByCode(groupCode);
+    if (!group) {
+      return NextResponse.json(
+        { error: 'Группа не найдена' },
+        { status: 404 }
+      );
+    }
+
+    const films = await getFilmsByGroup(group.id);
+
+    return NextResponse.json({
+      success: true,
+      data: films
+    });
+  } catch (error) {
+    console.error('Ошибка получения фильмов:', error);
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/groups-firebase/[id]/films - добавление фильма в группу
 export async function POST(
   request: NextRequest,
