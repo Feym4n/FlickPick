@@ -4,10 +4,9 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users, Plus, Play, Film as FilmIcon, Wifi, WifiOff, Copy, Check } from "lucide-react";
-import { Film } from "@/lib/database";
 import FilmSearch from "@/components/FilmSearch";
 import { KinopoiskFilm } from "@/services/kinopoisk";
-// import { Film } from "@/lib/database"; // Используется через WebSocket
+import { Film } from "@/lib/database";
 import { useGroupSocket } from "@/hooks/useSocket";
 
 interface GroupPageClientProps {
