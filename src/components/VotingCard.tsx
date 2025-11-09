@@ -16,7 +16,6 @@ interface VotingCardProps {
 export default function VotingCard({ 
   film, 
   onVote, 
-  onSkip,
   className = '' 
 }: VotingCardProps) {
   const [showDescription, setShowDescription] = useState(false);

@@ -113,7 +113,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
           if (data.success) {
             const creator = data.data.createdBy;
             const participants = data.data.participants || [];
-            let effectiveCreator = participants.includes(creator) 
+            const effectiveCreator = participants.includes(creator) 
               ? creator 
               : (participants.length > 0 ? participants[0] : null);
             setGroupCreator(effectiveCreator);

@@ -8,7 +8,7 @@ export function getAdminDb() {
 
     // Динамически подключаем firebase-admin, чтобы не требовать зависимость в браузере
     // и не падать, если пакет не установлен
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const admin = require('firebase-admin');
 
     if (!admin.apps || admin.apps.length === 0) {

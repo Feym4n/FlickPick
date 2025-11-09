@@ -128,7 +128,7 @@ export default function NicknameInput({
               <span>Или выберите из предложенных:</span>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
-              {suggestedNicknames.slice(0, 8).map((suggested, index) => (
+              {suggestedNicknames.slice(0, 8).map((suggested) => (
                 <motion.button
                   key={suggested}
                   type="button"

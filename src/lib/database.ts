@@ -7,7 +7,6 @@ import {
   deleteDoc,
   query, 
   where, 
-  orderBy,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -229,7 +228,7 @@ export async function deleteVotesByGroup(groupId: string): Promise<void> {
       const snap = await admin.collection(VOTES_COLLECTION).where('groupId', '==', groupId).get();
       deletedCount = snap.docs.length;
       const batch = admin.batch();
-      snap.docs.forEach((d: any) => batch.delete(d.ref));
+      snap.docs.forEach((d: { ref: unknown }) => batch.delete(d.ref));
       await batch.commit();
     } else {
       const q = query(collection(db, VOTES_COLLECTION), where('groupId', '==', groupId));
@@ -254,7 +253,7 @@ export async function deleteFilmsByGroup(groupId: string): Promise<void> {
       const snap = await admin.collection(FILMS_COLLECTION).where('groupId', '==', groupId).get();
       deletedCount = snap.docs.length;
       const batch = admin.batch();
-      snap.docs.forEach((d: any) => batch.delete(d.ref));
+      snap.docs.forEach((d: { ref: unknown }) => batch.delete(d.ref));
       await batch.commit();
     } else {
       const q = query(collection(db, FILMS_COLLECTION), where('groupId', '==', groupId));

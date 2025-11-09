@@ -2,11 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, Trophy, Heart, X, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Trophy, Heart, X, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { findMatches, MatchingStats, Vote } from '@/lib/matching';
 import { Film } from '@/lib/groups';
 import { Film as DatabaseFilm } from '@/lib/database';
+
+interface SuperMatch {
+  film: DatabaseFilm;
+  voters: string[];
+  likes: number;
+}
+
+interface BestMatch {
+  film: DatabaseFilm;
+  likes: number;
+  dislikes: number;
+  voters: string[];
+}
+
+interface ExtendedMatchingStats extends MatchingStats {
+  superMatch: SuperMatch | null;
+  bestMatch: BestMatch | null;
+}
 import { useGroupSocket } from '@/hooks/useSocket';
 
 interface ResultsPageClientProps {
@@ -15,8 +33,7 @@ interface ResultsPageClientProps {
 
 export default function ResultsPageClient({ groupCode }: ResultsPageClientProps) {
   const [group, setGroup] = useState<{ participants: string[]; films: Film[]; createdBy?: string } | null>(null);
-  const [votes, setVotes] = useState<Vote[]>([]);
-  const [matchingStats, setMatchingStats] = useState<MatchingStats | null>(null);
+  const [matchingStats, setMatchingStats] = useState<ExtendedMatchingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -60,10 +77,6 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
         // Загружаем голоса
         const votesResponse = await fetch(`/api/groups-firebase/${normalizedCode}/votes`);
         const votesData = await votesResponse.json();
-        
-        if (votesData.success) {
-          setVotes(votesData.data.votes || []);
-        }
 
         // Вычисляем совпадения и результаты
         if (groupData.data.films && groupData.data.participants) {
@@ -90,8 +103,8 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
           });
 
           // Находим SUPER MATCH и лучший фильм
-          let superMatch: any = null;
-          let bestMatch: any = null;
+          let superMatch: SuperMatch | null = null;
+          let bestMatch: BestMatch | null = null;
 
           films.forEach((film: DatabaseFilm) => {
             const filmVotes = votesByFilm.get(Number(film.kinopoiskId));
@@ -111,10 +124,10 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
           // Создаем расширенную статистику
           const stats = findMatches(votes, films, participants);
           setMatchingStats({
-            ...(stats as any),
+            ...stats,
             superMatch,
             bestMatch
-          } as any);
+          } as ExtendedMatchingStats);
         }
 
       } catch (err) {
@@ -225,7 +238,7 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
         </div>
 
         {/* Результаты */}
-        {matchingStats && (matchingStats as any).superMatch ? (
+        {matchingStats && matchingStats.superMatch ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -240,8 +253,8 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
               {/* Постер */}
               <div className="flex justify-center mb-6">
                 <img
-                  src={(matchingStats as any).superMatch.film.poster || '/placeholder-poster.jpg'}
-                  alt={(matchingStats as any).superMatch.film.title}
+                  src={matchingStats.superMatch.film.poster || '/placeholder-poster.jpg'}
+                  alt={matchingStats.superMatch.film.title}
                   className="w-48 md:w-40 h-72 md:h-60 object-cover rounded-xl shadow-lg"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -252,24 +265,24 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
               
               {/* Информация о фильме */}
               <div className="text-center md:text-left">
-                <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">{(matchingStats as any).superMatch.film.title}</h3>
-                <p className="text-yellow-200 text-lg md:text-xl mb-6">{(matchingStats as any).superMatch.film.year}</p>
+                <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">{matchingStats.superMatch.film.title}</h3>
+                <p className="text-yellow-200 text-lg md:text-xl mb-6">{matchingStats.superMatch.film.year}</p>
                 
                 <div className="bg-yellow-700 bg-opacity-70 rounded-lg p-4 mb-6">
                   <p className="text-yellow-100 text-base md:text-lg font-semibold">
-                    ✨ Все {(matchingStats as any).superMatch.voters.length} участников выбрали этот фильм!
+                    ✨ Все {matchingStats.superMatch.voters.length} участников выбрали этот фильм!
                   </p>
                 </div>
                 
-                {(matchingStats as any).superMatch.film.description && (
+                {matchingStats.superMatch.film.description && (
                   <div className="mt-6">
-                    <p className="text-gray-200 text-sm md:text-base leading-relaxed">{(matchingStats as any).superMatch.film.description}</p>
+                    <p className="text-gray-200 text-sm md:text-base leading-relaxed">{matchingStats.superMatch.film.description}</p>
                   </div>
                 )}
               </div>
             </div>
           </motion.div>
-        ) : matchingStats && (matchingStats as any).bestMatch ? (
+        ) : matchingStats && matchingStats.bestMatch ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -284,8 +297,8 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
               {/* Постер */}
               <div className="flex justify-center mb-6">
                 <img
-                  src={(matchingStats as any).bestMatch.film.poster || '/placeholder-poster.jpg'}
-                  alt={(matchingStats as any).bestMatch.film.title}
+                  src={matchingStats.bestMatch.film.poster || '/placeholder-poster.jpg'}
+                  alt={matchingStats.bestMatch.film.title}
                   className="w-48 md:w-32 h-72 md:h-48 object-cover rounded-xl shadow-lg"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -296,29 +309,29 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
               
               {/* Информация о фильме */}
               <div className="text-center md:text-left">
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{(matchingStats as any).bestMatch.film.title}</h3>
-                <p className="text-pink-200 text-base md:text-lg mb-4">{(matchingStats as any).bestMatch.film.year}</p>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{matchingStats.bestMatch.film.title}</h3>
+                <p className="text-pink-200 text-base md:text-lg mb-4">{matchingStats.bestMatch.film.year}</p>
                 
                 <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
                   <div className="flex items-center gap-2 text-pink-400">
                     <Heart className="h-5 w-5 fill-current" />
-                    <span className="font-semibold">{(matchingStats as any).bestMatch.likes} лайков</span>
+                    <span className="font-semibold">{matchingStats.bestMatch.likes} лайков</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-400">
                     <X className="h-5 w-5" />
-                    <span>{(matchingStats as any).bestMatch.dislikes} дизлайков</span>
+                    <span>{matchingStats.bestMatch.dislikes} дизлайков</span>
                   </div>
                 </div>
                 
                 <div className="bg-pink-700 bg-opacity-50 rounded-lg p-3 mb-6">
                   <p className="text-pink-200 text-sm">
-                    <strong>{(matchingStats as any).bestMatch.likes} из {matchingStats.totalParticipants} участников выбрали этот фильм</strong>
+                    <strong>{matchingStats.bestMatch.likes} из {matchingStats.totalParticipants} участников выбрали этот фильм</strong>
                   </p>
                 </div>
                 
-                {(matchingStats as any).bestMatch.film.description && (
+                {matchingStats.bestMatch.film.description && (
                   <div className="mt-6">
-                    <p className="text-gray-300 text-sm md:text-base leading-relaxed">{(matchingStats as any).bestMatch.film.description}</p>
+                    <p className="text-gray-300 text-sm md:text-base leading-relaxed">{matchingStats.bestMatch.film.description}</p>
                   </div>
                 )}
               </div>
@@ -336,7 +349,7 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
             </h2>
             
             <div className="space-y-6">
-              {matchingStats.matches.map((match, index) => (
+              {matchingStats.matches.map((match) => (
                 <div key={match.film.id} className="bg-gradient-to-r from-green-900 to-green-800 rounded-2xl p-6 border border-green-600">
                   {/* Постер фильма */}
                   <div className="flex justify-center mb-6">
@@ -399,7 +412,7 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
             </h2>
             
             <div className="space-y-4">
-              {matchingStats.partialMatches.map((match, index) => (
+              {matchingStats.partialMatches.map((match) => (
                 <div key={match.film.id} className="bg-gradient-to-r from-yellow-900 to-yellow-800 rounded-2xl p-6 border border-yellow-600">
                   <div className="flex items-start gap-6">
                     <img

@@ -1,7 +1,7 @@
 import { NextApiRequest } from 'next';
 import { NextApiResponseServerIO } from '@/lib/socket';
 import { Server as SocketIOServer } from 'socket.io';
-import { addFilmToGroup, getFilmsByGroup, getGroupByCode, getVotesByGroup, deleteGroup, deleteFilmsByGroup, deleteVotesByGroup, Film, Vote } from '@/lib/database';
+import { addFilmToGroup, getFilmsByGroup, getGroupByCode, getVotesByGroup, deleteFilmsByGroup, deleteVotesByGroup, Film, Vote } from '@/lib/database';
 import { addParticipantToGroup, removeParticipantFromGroup, getGroupParticipants, addSocketToGroup, removeSocketFromGroup } from '@/lib/socket';
 
 // Интерфейс для результатов голосования

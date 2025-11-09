@@ -10,10 +10,8 @@ export default function JoinPage() {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showNicknameInput, setShowNicknameInput] = useState(false);
-  const [participantNickname, setParticipantNickname] = useState("");
 
   const handleNicknameSubmit = (newNickname: string) => {
-    setParticipantNickname(newNickname);
     setShowNicknameInput(false);
     // После ввода никнейма присоединяемся к группе
     joinGroup(newNickname);
