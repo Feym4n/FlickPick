@@ -69,22 +69,23 @@ export function useSocket() {
           }
         });
 
-        socketInstance.on('reconnect', (attemptNumber) => {
+        // Обработчики событий переподключения (используем any для совместимости с типами)
+        socketInstance.on('reconnect' as any, (attemptNumber: number) => {
           console.log('✅ Socket reconnected after', attemptNumber, 'attempts');
           if (isMounted) {
             setIsConnected(true);
           }
         });
 
-        socketInstance.on('reconnect_attempt', (attemptNumber) => {
+        socketInstance.on('reconnect_attempt' as any, (attemptNumber: number) => {
           console.log('🔄 Reconnection attempt', attemptNumber);
         });
 
-        socketInstance.on('reconnect_error', (error) => {
+        socketInstance.on('reconnect_error' as any, (error: Error) => {
           console.error('⚠️ Reconnection error:', error.message);
         });
 
-        socketInstance.on('reconnect_failed', () => {
+        socketInstance.on('reconnect_failed' as any, () => {
           console.error('❌ Reconnection failed');
         });
 
