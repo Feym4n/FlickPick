@@ -345,7 +345,7 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
 
         // Проверяем эффективного создателя (если создатель вышел, права у первого участника)
         const participants = group.participants || [];
-        const effectiveCreator = participants.includes(group.createdBy) 
+        const effectiveCreator = (group.createdBy && participants.includes(group.createdBy))
           ? group.createdBy 
           : (participants.length > 0 ? participants[0] : null);
         
