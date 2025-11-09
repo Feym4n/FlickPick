@@ -35,13 +35,17 @@ export function useSocket() {
         if (!isMounted) return;
 
         // Создаем Socket.IO подключение
+        // На Vercel лучше использовать polling как основной транспорт
         socketInstance = io(socketUrl, {
           path: '/api/socket',
-          transports: ['websocket', 'polling'],
+          transports: ['polling', 'websocket'], // Polling первым для лучшей совместимости с Vercel
           reconnection: true,
           reconnectionDelay: 1000,
-          reconnectionAttempts: 5,
-          timeout: 10000,
+          reconnectionDelayMax: 5000,
+          reconnectionAttempts: Infinity, // Бесконечные попытки переподключения
+          timeout: 20000,
+          forceNew: false,
+          upgrade: true,
         });
 
         socketInstance.on('connect', () => {
@@ -63,6 +67,25 @@ export function useSocket() {
           if (isMounted) {
             setIsConnected(false);
           }
+        });
+
+        socketInstance.on('reconnect', (attemptNumber) => {
+          console.log('✅ Socket reconnected after', attemptNumber, 'attempts');
+          if (isMounted) {
+            setIsConnected(true);
+          }
+        });
+
+        socketInstance.on('reconnect_attempt', (attemptNumber) => {
+          console.log('🔄 Reconnection attempt', attemptNumber);
+        });
+
+        socketInstance.on('reconnect_error', (error) => {
+          console.error('⚠️ Reconnection error:', error.message);
+        });
+
+        socketInstance.on('reconnect_failed', () => {
+          console.error('❌ Reconnection failed');
         });
 
         if (isMounted) {

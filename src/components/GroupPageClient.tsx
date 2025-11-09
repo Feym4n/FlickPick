@@ -54,10 +54,38 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   } = useGroupSocket(groupCode, participantName);
 
   // Используем участников из WebSocket, если они есть, иначе из начальной загрузки
-  const displayParticipants = participants.length > 0 ? participants : initialParticipants;
+  // Если WebSocket подключен, приоритет у него, иначе используем начальные данные
+  const displayParticipants = (isConnected && participants.length > 0) ? participants : initialParticipants;
   
   // Используем фильмы из WebSocket, если они есть, иначе из начальной загрузки
-  const displayFilms = films.length > 0 ? films : initialFilms;
+  const displayFilms = (isConnected && films.length > 0) ? films : initialFilms;
+  
+  // Периодическая синхронизация, если WebSocket не подключен
+  useEffect(() => {
+    if (!isConnected) {
+      const syncInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/groups-firebase?code=${groupCode}`);
+          const data = await response.json();
+          if (data.success) {
+            setInitialParticipants(data.data.participants || []);
+            
+            const filmsResponse = await fetch(`/api/groups-firebase/${groupCode}/films`);
+            if (filmsResponse.ok) {
+              const filmsData = await filmsResponse.json();
+              if (filmsData.success && filmsData.data) {
+                setInitialFilms(filmsData.data);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка синхронизации данных:', error);
+        }
+      }, 5000); // Синхронизация каждые 5 секунд, если WebSocket не работает
+      
+      return () => clearInterval(syncInterval);
+    }
+  }, [isConnected, groupCode]);
 
   // Загружаем данные группы для определения создателя
   useEffect(() => {

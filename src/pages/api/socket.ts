@@ -72,10 +72,11 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
     addTrailingSlash: false,
     cors: {
       origin: process.env.NODE_ENV === 'production' 
-        ? process.env.ALLOWED_ORIGINS?.split(',') || []
-        : '*', // В разработке разрешаем все, в продакшене только разрешенные домены
+        ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*')
+        : '*', // В разработке разрешаем все, в продакшене используем ALLOWED_ORIGINS или все
       methods: ['GET', 'POST'],
       credentials: true,
+      allowedHeaders: ['Content-Type'],
     },
     transports: ['websocket', 'polling'],
   });
