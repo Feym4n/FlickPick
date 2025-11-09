@@ -118,33 +118,36 @@ export function useGroupSocket(groupCode: string, participantName: string) {
   const [completedParticipants, setCompletedParticipants] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket) return;
 
-    // Подключаемся к группе
-    socket.emit('group:join', { groupCode, participantName });
+    // Устанавливаем обработчики событий сразу, даже если еще не подключен
+    // Это важно для получения событий при переподключении
+    
+    // Обработчик начала голосования - должен работать всегда
+    const handleVotingStarted = () => {
+      console.log('Voting started, redirecting to voting page');
+      const nickname = typeof window !== 'undefined' 
+        ? (sessionStorage.getItem(`nickname_${groupCode}`) || participantName)
+        : participantName;
+      window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(nickname)}`;
+    };
 
     // Слушаем события группы
-    socket.on('group:participant-joined', (data) => {
+    const handleParticipantJoined = (data: { participant: string; participants: string[] }) => {
       setParticipants(data.participants);
-    });
+    };
 
-    socket.on('group:participant-left', (data) => {
+    const handleParticipantLeft = (data: { participant: string; participants: string[] }) => {
       setParticipants(data.participants);
-    });
+    };
 
-    socket.on('group:film-added', (data) => {
+    const handleFilmAdded = (data: { film: any; films: any[] }) => {
       setFilms(data.films);
-    });
+    };
 
-    socket.on('group:film-removed', (data) => {
+    const handleFilmRemoved = (data: { filmId: string; films: any[] }) => {
       setFilms(data.films);
-    });
-
-    socket.on('voting:started', () => {
-      console.log('Voting started, redirecting to voting page');
-      // Автоматически перенаправляем на страницу голосования
-      window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
-    });
+    };
 
     const handleVoteCast = (data: { participant: string; filmId: number; vote: 'like' | 'dislike' }) => {
       console.log(`${data.participant} voted ${data.vote} for film ${data.filmId}`);
