@@ -15,7 +15,6 @@ interface GroupPageClientProps {
 
 export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   const [isCreator, setIsCreator] = useState(false);
-  const [groupCreator, setGroupCreator] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showFilmSearch, setShowFilmSearch] = useState(false);
   
@@ -82,7 +81,6 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
             effectiveCreator = participants[0];
           }
           
-          setGroupCreator(effectiveCreator);
           setIsCreator(participantName === effectiveCreator);
         } else {
           console.error('Ошибка загрузки группы:', data.error);
@@ -101,10 +99,9 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    const handleCreatorChanged = (data: { newCreator: string; message: string }) => {
-      console.log('Creator changed event received:', data);
-      setGroupCreator(data.newCreator);
-      setIsCreator(participantName === data.newCreator);
+      const handleCreatorChanged = (data: { newCreator: string; message: string }) => {
+        console.log('Creator changed event received:', data);
+        setIsCreator(participantName === data.newCreator);
       // Перезагружаем данные группы для синхронизации
       const loadGroup = async () => {
         try {
