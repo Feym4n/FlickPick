@@ -284,7 +284,6 @@ export default function VotingPageClient({ groupCode }: VotingPageClientProps) {
       className="h-screen overflow-hidden bg-gradient-to-b from-black via-gray-900 to-gray-800 text-white flex flex-col"
       style={{
         overscrollBehavior: 'none',
-        // @ts-expect-error - Webkit префикс для Safari
         WebkitOverscrollBehavior: 'none'
       } as React.CSSProperties}
     >
