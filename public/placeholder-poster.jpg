@@ -1,0 +1,7 @@
+<svg width="300" height="450" viewBox="0 0 300 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="450" fill="#374151"/>
+  <rect x="50" y="150" width="200" height="150" rx="8" fill="#4B5563"/>
+  <path d="M120 200L140 220L180 180" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="150" y="320" text-anchor="middle" fill="#9CA3AF" font-family="Arial, sans-serif" font-size="16">Постер не найден</text>
+</svg>
+
