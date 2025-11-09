@@ -146,11 +146,11 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
     });
 
-    socket.on('voting:vote-cast', (data) => {
+    const handleVoteCast = (data: { participant: string; filmId: number; vote: 'like' | 'dislike' }) => {
       console.log(`${data.participant} voted ${data.vote} for film ${data.filmId}`);
-    });
+    };
 
-    socket.on('voting:completed', (data: { participant: string }) => {
+    const handleVotingCompleted = (data: { participant: string }) => {
       console.log('Participant completed voting:', data.participant);
       setCompletedParticipants(prev => {
         if (!prev.includes(data.participant)) {
@@ -158,60 +158,70 @@ export function useGroupSocket(groupCode: string, participantName: string) {
         }
         return prev;
       });
-    });
+    };
 
-    socket.on('group:creator-changed', (data) => {
+    const handleCreatorChanged = (data: { newCreator: string; message: string }) => {
       console.log('Creator changed:', data.newCreator, data.message);
-      // Обновляем список участников, если нужно
-      // Это событие будет обработано в GroupPageClient через перезагрузку группы
-    });
+    };
 
-    socket.on('voting:all-completed', () => {
+    const handleVotingAllCompleted = () => {
       console.log('All participants completed voting, redirecting to results');
-      // Получаем никнейм из sessionStorage для передачи в результаты
       const nickname = typeof window !== 'undefined' 
         ? sessionStorage.getItem(`nickname_${groupCode}`) || participantName
         : participantName;
-      // Перенаправляем на страницу результатов с никнеймом
       window.location.href = `/results/${groupCode}?nickname=${encodeURIComponent(nickname)}`;
-    });
+    };
 
-    socket.on('notification:error', (data) => {
+    const handleNotificationError = (data: { message: string }) => {
       console.error('Socket error:', data.message);
-    });
+    };
 
-    socket.on('group:closed', (data) => {
+    const handleGroupClosed = (data: { message: string }) => {
       console.log('Group closed:', data.message);
-      // Перенаправляем пользователя на главную страницу, если группа закрыта
       if (typeof window !== 'undefined') {
         alert('Группа была закрыта создателем');
         window.location.href = '/';
       }
-    });
+    };
 
-    socket.on('group:reset', () => {
-      // Очищаем локально и возвращаемся в группу
+    const handleGroupReset = () => {
       setFilms([]);
       const nickname = typeof window !== 'undefined' 
         ? (sessionStorage.getItem(`nickname_${groupCode}`) || participantName)
         : participantName;
       window.location.href = `/group/${groupCode}?nickname=${encodeURIComponent(nickname)}`;
-    });
+    };
+
+    socket.on('voting:vote-cast', handleVoteCast);
+    socket.on('voting:completed', handleVotingCompleted);
+    socket.on('group:creator-changed', handleCreatorChanged);
+    socket.on('voting:all-completed', handleVotingAllCompleted);
+    socket.on('notification:error', handleNotificationError);
+    socket.on('group:closed', handleGroupClosed);
+    socket.on('group:reset', handleGroupReset);
+
+    // Подключаемся к группе при подключении WebSocket
+    if (isConnected) {
+      socket.emit('group:join', { groupCode, participantName });
+    }
 
     // Очистка при размонтировании
     return () => {
-      socket.emit('group:leave', { groupCode, participantName });
-      socket.off('group:participant-joined');
-      socket.off('group:participant-left');
-      socket.off('group:film-added');
-      socket.off('group:film-removed');
-      socket.off('voting:started');
-      socket.off('voting:vote-cast');
-      socket.off('voting:completed');
-      socket.off('voting:all-completed');
-      socket.off('notification:error');
-      socket.off('group:closed');
-      socket.off('group:reset');
+      if (isConnected) {
+        socket.emit('group:leave', { groupCode, participantName });
+      }
+      socket.off('group:participant-joined', handleParticipantJoined);
+      socket.off('group:participant-left', handleParticipantLeft);
+      socket.off('group:film-added', handleFilmAdded);
+      socket.off('group:film-removed', handleFilmRemoved);
+      socket.off('voting:started', handleVotingStarted);
+      socket.off('voting:vote-cast', handleVoteCast);
+      socket.off('voting:completed', handleVotingCompleted);
+      socket.off('voting:all-completed', handleVotingAllCompleted);
+      socket.off('group:creator-changed', handleCreatorChanged);
+      socket.off('notification:error', handleNotificationError);
+      socket.off('group:closed', handleGroupClosed);
+      socket.off('group:reset', handleGroupReset);
     };
   }, [socket, isConnected, groupCode, participantName]);
 
