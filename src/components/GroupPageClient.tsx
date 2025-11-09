@@ -17,6 +17,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   const [isCreator, setIsCreator] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showFilmSearch, setShowFilmSearch] = useState(false);
+  const [initialParticipants, setInitialParticipants] = useState<string[]>([]);
   
   // Получаем никнейм из URL параметров, sessionStorage или используем дефолтный
   const [participantName] = useState(() => {
@@ -40,7 +41,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     }
     return 'Участник';
   });
-  
+
   // Используем WebSocket для реального времени
   const { 
     socket,
@@ -50,6 +51,9 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     addFilm: addFilmRealtime,
     startVoting: startVotingRealtime
   } = useGroupSocket(groupCode, participantName);
+
+  // Используем участников из WebSocket, если они есть, иначе из начальной загрузки
+  const displayParticipants = participants.length > 0 ? participants : initialParticipants;
 
   // Загружаем данные группы для определения создателя
   useEffect(() => {
@@ -61,6 +65,9 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
         if (data.success) {
           const creator = data.data.createdBy;
           const participants = data.data.participants || [];
+          
+          // Сохраняем участников для начального отображения
+          setInitialParticipants(participants);
           
           // Если создатель не в списке участников, передаем права первому участнику
           let effectiveCreator = creator;
@@ -93,7 +100,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     if (groupCode) {
       loadGroup();
     }
-  }, [groupCode, participantName, participants]);
+  }, [groupCode, participantName]);
 
   // Обработчик события смены создателя через WebSocket
   useEffect(() => {
@@ -240,17 +247,17 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
           <div className="flex items-center mb-4">
             <Users className="h-5 w-5 mr-2" />
             <h2 className="text-lg font-semibold">Участники</h2>
-            <span className="ml-2 text-sm text-gray-400">({participants.length})</span>
+            <span className="ml-2 text-sm text-gray-400">({displayParticipants.length})</span>
           </div>
           
           <div className="bg-gray-800 rounded-xl p-4 min-h-[100px] flex items-center justify-center">
-            {participants.length === 0 ? (
+            {displayParticipants.length === 0 ? (
               <p className="text-gray-400 text-center">
                 Пока никто не присоединился к группе
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {participants.map((participant, index) => (
+                {displayParticipants.map((participant, index) => (
                   <div
                     key={index}
                     className="bg-pink-600 px-3 py-1 rounded-full text-sm"
