@@ -96,7 +96,23 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   
   useEffect(() => {
     if (films.length > 0) {
-      setInitialFilms(films);
+      // Объединяем фильмы из WebSocket с существующими, убирая дубликаты
+      setInitialFilms(prev => {
+        const merged = [...prev];
+        films.forEach(film => {
+          const existingIndex = merged.findIndex(f => f.kinopoiskId === film.kinopoiskId);
+          if (existingIndex === -1) {
+            // Новый фильм - добавляем
+            merged.push(film);
+          } else {
+            // Обновляем существующий фильм (заменяем временный на реальный)
+            if (merged[existingIndex].id?.toString().startsWith('temp-')) {
+              merged[existingIndex] = film;
+            }
+          }
+        });
+        return merged;
+      });
     }
   }, [films]);
 

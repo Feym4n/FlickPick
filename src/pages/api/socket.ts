@@ -260,7 +260,8 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
           posterUrl: film.posterUrl ? String(film.posterUrl).trim().slice(0, 500) : '',
         };
 
-        await addFilmToGroup({
+        // Добавляем фильм
+        const filmId = await addFilmToGroup({
           groupId: group.id,
           kinopoiskId: film.kinopoiskId,
           title: sanitizedFilm.nameRu,
@@ -271,13 +272,24 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
           addedBy: socket.data.participantName || 'Участник'
         });
 
-        // Получаем обновленный список фильмов
-        const films = await getFilmsByGroup(group.id);
+        // Создаем объект фильма для отправки (оптимизация: не делаем лишний запрос к БД)
+        const newFilm = {
+          id: filmId,
+          kinopoiskId: film.kinopoiskId,
+          title: sanitizedFilm.nameRu,
+          year: film.year && typeof film.year === 'number' && film.year > 1900 && film.year < 2100 ? film.year : undefined,
+          poster: sanitizedFilm.posterUrl,
+          description: sanitizedFilm.description,
+          rating: film.ratingKinopoisk && typeof film.ratingKinopoisk === 'number' && film.ratingKinopoisk >= 0 && film.ratingKinopoisk <= 10 ? film.ratingKinopoisk : undefined,
+          addedBy: socket.data.participantName || 'Участник',
+          addedAt: new Date().toISOString()
+        };
 
-        // Уведомляем всех участников группы
+        // Уведомляем всех участников группы (включая отправителя)
+        // Клиенты сами добавят фильм в список оптимистично
         io.to(sanitizedCode).emit('group:film-added', {
-          film: sanitizedFilm,
-          films
+          film: newFilm,
+          films: null // Не отправляем весь список, клиенты обновят локально
         });
 
         console.log(`Film added to group ${sanitizedCode}:`, sanitizedFilm.nameRu);
