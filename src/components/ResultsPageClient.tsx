@@ -79,10 +79,32 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
         const votesData = await votesResponse.json();
 
         // Вычисляем совпадения и результаты
-        if (groupData.data.films && groupData.data.participants) {
-          const votes = votesData.data.votes || [];
-          const films = groupData.data.films;
-          const participants = groupData.data.participants;
+        const votes = votesData.data?.votes || [];
+        const films = groupData.data.films || [];
+        let participants = Array.isArray(groupData.data.participants) ? groupData.data.participants : [];
+        
+        // Если участники удалены из группы (после disconnect), восстанавливаем их из голосов
+        if (participants.length === 0 && votes.length > 0) {
+          const uniqueParticipants = new Set<string>();
+          votes.forEach((vote: Vote) => {
+            if (vote.participantId) {
+              uniqueParticipants.add(vote.participantId);
+            }
+          });
+          participants = Array.from(uniqueParticipants);
+          console.log('Participants restored from votes:', participants);
+        }
+        
+        // Логирование для отладки
+        console.log('Results page data:', {
+          participantsCount: participants.length,
+          participants,
+          filmsCount: films.length,
+          votesCount: votes.length,
+          groupDataParticipants: groupData.data.participants
+        });
+        
+        if (films.length > 0 && participants.length > 0) {
           
           // Проверяем SUPER MATCH: все участники выбрали один фильм
           const votesByFilm = new Map<number, { likes: number; dislikes: number; voters: string[] }>();
@@ -126,8 +148,17 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
           setMatchingStats({
             ...stats,
             superMatch,
-            bestMatch
+            bestMatch,
+            totalParticipants: participants.length // Убеждаемся, что totalParticipants установлен
           } as ExtendedMatchingStats);
+        } else {
+          console.warn('Missing data for results:', {
+            hasFilms: films.length > 0,
+            hasParticipants: participants.length > 0,
+            participants,
+            films
+          });
+          setError('Недостаточно данных для отображения результатов');
         }
 
       } catch (err) {
@@ -144,7 +175,7 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
   // Удаляем фильмы и голоса после загрузки результатов (с задержкой, чтобы результаты успели отобразиться)
   useEffect(() => {
     if (!isLoading && matchingStats) {
-      // Удаляем через 30 секунд после показа результатов (достаточно времени для просмотра)
+      // Удаляем через 5 минут после показа результатов (достаточно времени для просмотра)
       const cleanupTimer = setTimeout(async () => {
         try {
           const response = await fetch(`/api/groups-firebase/${groupCode}/cleanup`, {
@@ -159,7 +190,7 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
         } catch (error) {
           console.error('Ошибка при очистке данных группы:', error);
         }
-      }, 30000); // 30 секунд задержка
+      }, 300000); // 5 минут задержка (300000 мс)
       
       return () => clearTimeout(cleanupTimer);
     }

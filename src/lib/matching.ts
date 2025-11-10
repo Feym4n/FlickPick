@@ -54,7 +54,13 @@ export function findMatches(
 
   // Анализируем каждый фильм
   films.forEach(film => {
-    const filmVotes = votesByFilm.get(parseInt(film.id.split('_')[1])) || [];
+    // Используем kinopoiskId для сопоставления с голосами
+    if (!film.kinopoiskId) {
+      console.warn('Film missing kinopoiskId:', film.id, film.title);
+      return; // Пропускаем фильмы без kinopoiskId
+    }
+    const filmId = typeof film.kinopoiskId === 'number' ? film.kinopoiskId : Number(film.kinopoiskId);
+    const filmVotes = votesByFilm.get(filmId) || [];
     
     if (filmVotes.length === 0) {
       return; // Фильм не голосовался

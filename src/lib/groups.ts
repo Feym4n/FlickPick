@@ -19,6 +19,7 @@ export interface Vote {
 
 export interface Film {
   id: string;
+  kinopoiskId?: number; // ID фильма в Кинопоиске для сопоставления с голосами
   title: string;
   year: number;
   poster?: string;
