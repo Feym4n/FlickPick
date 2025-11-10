@@ -166,8 +166,8 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       console.log(`${data.participant} voted ${data.vote} for film ${data.filmId}`);
     };
 
-    const handleVotingCompleted = (data: { participant: string }) => {
-      console.log('Participant completed voting:', data.participant);
+    const handleVotingCompleted = (data: { participant: string; completedCount?: number; totalCount?: number }) => {
+      console.log('Participant completed voting:', data.participant, `(${data.completedCount || '?'}/${data.totalCount || '?'})`);
       setCompletedParticipants(prev => {
         if (!prev.includes(data.participant)) {
           return [...prev, data.participant];

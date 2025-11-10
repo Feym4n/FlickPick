@@ -25,7 +25,7 @@ export interface ServerToClientEvents {
   // События голосования
   'voting:started': (data: { films: any[] }) => void;
   'voting:vote-cast': (data: { participant: string; filmId: number; vote: 'like' | 'dislike' }) => void;
-  'voting:completed': (data: { participant: string }) => void;
+  'voting:completed': (data: { participant: string; completedCount?: number; totalCount?: number }) => void;
   'voting:all-completed': (data: { results: any }) => void;
   
   // Уведомления

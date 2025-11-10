@@ -394,14 +394,22 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
           return;
         }
 
-        const allParticipants = Array.from(new Set([
-          ...group.participants,
-          ...getGroupParticipants(groupCode)
-        ]));
+        // БД - единственный источник истины для списка участников
+        const allParticipants = group.participants || [];
         
-        // Проверяем голоса в базе данных
+        if (allParticipants.length === 0) {
+          console.warn(`No participants in group ${groupCode}`);
+          return;
+        }
+        
+        // Проверяем голоса в базе данных (источник истины)
         const votes = await getVotesByGroup(group.id);
         const films = await getFilmsByGroup(group.id);
+        
+        if (films.length === 0) {
+          console.warn(`No films in group ${groupCode}`);
+          return;
+        }
         
         // Считаем, сколько фильмов проголосовано каждым участником
         const votesByParticipant = new Map<string, Set<number>>();
@@ -412,37 +420,34 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
           votesByParticipant.get(vote.participantId)!.add(vote.filmId);
         });
 
-        // Добавляем текущего участника (предполагаем, что он проголосовал за все фильмы)
-        // Нужно проверить реально через API, но пока считаем, что если он сохранил голоса, то завершил
-        const completedParticipants = new Set<string>(votesByParticipant.keys());
-        completedParticipants.add(participantName);
-
-        console.log(`Voting completed by ${participantName} in group ${groupCode}`);
-        console.log(`Participants: ${allParticipants.join(', ')}`);
-        console.log(`Completed: ${Array.from(completedParticipants).join(', ')}`);
-        console.log(`Progress: ${completedParticipants.size}/${allParticipants.length}`);
-
-        // Если все участники завершили голосование (проголосовали за все фильмы)
-        // Проверяем, что каждый участник проголосовал за каждый фильм
-        const allCompleted = allParticipants.every(participant => {
+        // Определяем завершивших участников: те, кто проголосовал за все фильмы
+        const completedParticipants = Array.from(allParticipants).filter(participant => {
           const participantVotes = votesByParticipant.get(participant);
-          // Если это текущий участник, который только что завершил, считаем его завершившим
-          if (participant === participantName) return true;
-          // Иначе проверяем, что он проголосовал за все фильмы
           return participantVotes && participantVotes.size === films.length;
         });
 
-        if (allCompleted && completedParticipants.size >= allParticipants.length) {
-          // Вычисляем результаты (films уже загружены выше)
+        console.log(`Voting status in group ${groupCode}:`);
+        console.log(`  Total participants: ${allParticipants.length}`);
+        console.log(`  Total films: ${films.length}`);
+        console.log(`  Completed: ${completedParticipants.length} (${completedParticipants.join(', ')})`);
+        console.log(`  Votes in DB: ${votes.length}`);
+
+        // Уведомляем всех о прогрессе
+        io.to(groupCode).emit('voting:completed', { 
+          participant: participantName,
+          completedCount: completedParticipants.length,
+          totalCount: allParticipants.length
+        });
+
+        // Проверяем, все ли участники завершили голосование
+        if (completedParticipants.length === allParticipants.length && allParticipants.length > 0) {
+          // Вычисляем результаты
           const results = calculateResults(votes, films, allParticipants);
           
-          // Уведомляем всех участников
+          // Уведомляем всех участников о завершении
           io.to(groupCode).emit('voting:all-completed', { results });
           
           console.log(`All participants completed voting in group ${groupCode}`);
-        } else {
-          // Уведомляем всех о прогрессе (включая отправителя)
-          io.to(groupCode).emit('voting:completed', { participant: participantName });
         }
       } catch (error) {
         console.error('Error processing voting completion:', error);
