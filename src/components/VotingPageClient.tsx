@@ -100,17 +100,72 @@ export default function VotingPageClient({ groupCode }: VotingPageClientProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVotingComplete, votesSaved, votes.length]);
 
+  // Синхронизация состояния голосования через API (fallback и проверка)
+  useEffect(() => {
+    const syncVotingStatus = async () => {
+      try {
+        // Получаем актуальные данные из БД
+        const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
+        if (votesResponse.ok) {
+          const votesData = await votesResponse.json();
+          const votes = votesData.data?.votes || [];
+          
+          // Получаем список участников и фильмов
+          const groupResponse = await fetch(`/api/groups-firebase?code=${groupCode}`);
+          if (groupResponse.ok) {
+            const groupData = await groupResponse.json();
+            if (groupData.success) {
+              const participants = groupData.data.participants || [];
+              const films = groupData.data.films || [];
+              
+              // Считаем завершивших: тех, кто проголосовал за все фильмы
+              const votesByParticipant = new Map<string, Set<number>>();
+              votes.forEach((vote: Vote) => {
+                if (!votesByParticipant.has(vote.participantId)) {
+                  votesByParticipant.set(vote.participantId, new Set());
+                }
+                votesByParticipant.get(vote.participantId)!.add(vote.filmId);
+              });
+              
+              const completed = participants.filter((p: string) => {
+                const participantVotes = votesByParticipant.get(p);
+                return participantVotes && participantVotes.size === films.length;
+              });
+              
+              setCompletedParticipants(completed);
+              
+              // Если все завершили, перенаправляем на результаты
+              if (completed.length === participants.length && participants.length > 0 && films.length > 0) {
+                console.log('All participants completed (detected via API sync), redirecting...');
+                window.location.href = `/results/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка синхронизации состояния голосования:', error);
+      }
+    };
+
+    // Синхронизируем при сохранении голосов и периодически
+    if (votesSaved) {
+      syncVotingStatus();
+    }
+    
+    // Периодическая синхронизация каждые 2 секунды
+    const interval = setInterval(syncVotingStatus, 2000);
+    return () => clearInterval(interval);
+  }, [votesSaved, groupCode, participantName]);
+
   // Обновляем список завершивших из WebSocket
   useEffect(() => {
     if (socketCompletedParticipants.length > 0) {
-      // Объединяем с текущим пользователем, если его там нет
-      const allCompleted = Array.from(new Set([participantName, ...socketCompletedParticipants]));
-      setCompletedParticipants(allCompleted);
-    } else if (votesSaved) {
-      // Если голоса сохранены, добавляем текущего пользователя
-      setCompletedParticipants([participantName]);
+      setCompletedParticipants(prev => {
+        const merged = Array.from(new Set([...prev, ...socketCompletedParticipants]));
+        return merged;
+      });
     }
-  }, [socketCompletedParticipants, votesSaved, participantName]);
+  }, [socketCompletedParticipants]);
 
   // Автоматическое сохранение голосов
   const saveVotesAutomatically = async () => {
