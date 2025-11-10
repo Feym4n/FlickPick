@@ -323,10 +323,15 @@ export default function VotingPageClient({ groupCode }: VotingPageClientProps) {
 
   if (isVotingComplete) {
     // Показываем красивый экран ожидания вместо кнопки сохранения
+    // Используем актуальные данные из синхронизации API
+    const totalParticipants = participants.length || group?.participants?.length || 1;
+    // Если голоса сохранены, текущий пользователь завершил
+    const completedCount = completedParticipants.length || (votesSaved ? 1 : 0);
+    
     return (
       <WaitingForOthers
-        completedCount={completedParticipants.length || 1} // Начинаем с 1, так как текущий пользователь завершил
-        totalCount={participants.length || group?.participants?.length || 1}
+        completedCount={completedCount}
+        totalCount={totalParticipants}
       />
     );
   }

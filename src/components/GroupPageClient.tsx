@@ -391,10 +391,23 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       return;
     }
     
+    // Блокируем повторные нажатия
+    const button = document.querySelector('button[onClick]') as HTMLButtonElement;
+    if (button) {
+      button.disabled = true;
+    }
+    
     // Всегда пытаемся использовать WebSocket, если он есть и подключен
     if (socket && socket.connected && startVotingRealtime) {
       try {
+        console.log('Starting voting via WebSocket with films:', displayFilms.length);
         startVotingRealtime(displayFilms);
+        // Небольшая задержка перед перенаправлением (если WebSocket не сработает)
+        setTimeout(() => {
+          if (document.location.pathname.includes('/group/')) {
+            window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
+          }
+        }, 1000);
       } catch (error) {
         console.error('Ошибка начала голосования через WebSocket:', error);
         // Fallback: переход только для текущего пользователя
@@ -402,6 +415,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       }
     } else {
       // Fallback: переход только для текущего пользователя
+      console.log('WebSocket not connected, using direct redirect');
       window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
     }
   };
