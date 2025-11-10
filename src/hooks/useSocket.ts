@@ -243,10 +243,35 @@ export function useGroupSocket(groupCode: string, participantName: string) {
     }
 
     // Также обрабатываем переподключение
-    socket.on('reconnect' as any, () => {
+    const handleReconnect = () => {
       console.log('Socket reconnected, rejoining group');
       joinGroup();
-    });
+      
+      // ВАЖНО: После переподключения проверяем состояние голосования
+      // Если голосование уже начато, перенаправляем пользователя
+      if (typeof window !== 'undefined') {
+        const checkVotingStatus = async () => {
+          try {
+            const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
+            if (votesResponse.ok) {
+              const votesData = await votesResponse.json();
+              if (votesData.success && votesData.data && votesData.data.length > 0) {
+                // Голосование начато - перенаправляем
+                console.log('Voting already started, redirecting after reconnect...');
+                const nickname = sessionStorage.getItem(`nickname_${groupCode}`) || participantName;
+                window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(nickname)}`;
+              }
+            }
+          } catch (error) {
+            console.error('Ошибка проверки состояния голосования при переподключении:', error);
+          }
+        };
+        // Небольшая задержка, чтобы дать время на переподключение к группе
+        setTimeout(checkVotingStatus, 1000);
+      }
+    };
+    
+    socket.on('reconnect' as any, handleReconnect);
 
     // Очистка при размонтировании
     return () => {

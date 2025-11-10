@@ -131,10 +131,10 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     }
   }, [films]);
 
-  // Синхронизация при подключении WebSocket
+  // Синхронизация при подключении WebSocket и проверка состояния голосования
   useEffect(() => {
     if (isConnected && socket) {
-      // При подключении запрашиваем актуальные данные
+      // При подключении запрашиваем актуальные данные и проверяем состояние голосования
       const syncData = async () => {
         try {
           const response = await fetch(`/api/groups-firebase?code=${groupCode}`);
@@ -149,6 +149,18 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
                 setInitialFilms(filmsData.data);
               }
             }
+
+            // ВАЖНО: Проверяем, начато ли голосование (если есть голоса, значит голосование начато)
+            const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
+            if (votesResponse.ok) {
+              const votesData = await votesResponse.json();
+              if (votesData.success && votesData.data && votesData.data.length > 0) {
+                // Голосование уже начато - перенаправляем на страницу голосования
+                console.log('Voting already started, redirecting...');
+                window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
+                return;
+              }
+            }
           }
         } catch (error) {
           console.error('Ошибка синхронизации при подключении:', error);
@@ -156,7 +168,32 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       };
       syncData();
     }
-  }, [isConnected, socket, groupCode]);
+  }, [isConnected, socket, groupCode, participantName]);
+
+  // Fallback: периодическая проверка начала голосования, если WebSocket не подключен
+  useEffect(() => {
+    if (!isConnected) {
+      const checkVotingStatus = async () => {
+        try {
+          const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
+          if (votesResponse.ok) {
+            const votesData = await votesResponse.json();
+            if (votesData.success && votesData.data && votesData.data.length > 0) {
+              // Голосование начато - перенаправляем
+              console.log('Voting started (detected via polling), redirecting...');
+              window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка проверки состояния голосования:', error);
+        }
+      };
+
+      // Проверяем каждые 3 секунды, если WebSocket не подключен
+      const interval = setInterval(checkVotingStatus, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isConnected, groupCode, participantName]);
 
   // Загружаем данные группы для определения создателя
   useEffect(() => {
