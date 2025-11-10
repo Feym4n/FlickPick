@@ -35,10 +35,10 @@ export function useSocket() {
         if (!isMounted) return;
 
         // Создаем Socket.IO подключение
-        // На Vercel лучше использовать polling как основной транспорт
+        // На Railway можно использовать websocket как основной транспорт (лучше производительность)
         socketInstance = io(socketUrl, {
           path: '/api/socket',
-          transports: ['polling', 'websocket'], // Polling первым для лучшей совместимости с Vercel
+          transports: ['websocket', 'polling'], // WebSocket первым для лучшей производительности на Railway
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
