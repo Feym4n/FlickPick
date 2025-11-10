@@ -268,16 +268,16 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   const handleAddFilm = async (film: KinopoiskFilm) => {
     try {
       // Оптимистичное обновление UI - показываем фильм сразу
-      const optimisticFilm = {
+      const optimisticFilm: Film = {
         id: `temp-${Date.now()}`,
         kinopoiskId: film.kinopoiskId,
         title: film.nameRu || film.nameEn || 'Без названия',
-        year: film.year,
+        year: film.year || new Date().getFullYear(),
         poster: film.posterUrl || '',
         description: film.description || '',
         rating: film.ratingKinopoisk,
         addedBy: participantName,
-        addedAt: new Date().toISOString()
+        addedAt: new Date()
       };
       
       // Добавляем фильм в локальное состояние сразу
