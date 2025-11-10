@@ -154,7 +154,8 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
             const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
             if (votesResponse.ok) {
               const votesData = await votesResponse.json();
-              if (votesData.success && votesData.data && votesData.data.length > 0) {
+              const votes = votesData.data?.votes || [];
+              if (votesData.success && votes.length > 0) {
                 // Голосование уже начато - перенаправляем на страницу голосования
                 console.log('Voting already started, redirecting...');
                 window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
@@ -178,7 +179,8 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
           const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
           if (votesResponse.ok) {
             const votesData = await votesResponse.json();
-            if (votesData.success && votesData.data && votesData.data.length > 0) {
+            const votes = votesData.data?.votes || [];
+            if (votesData.success && votes.length > 0) {
               // Голосование начато - перенаправляем
               console.log('Voting started (detected via polling), redirecting...');
               window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;

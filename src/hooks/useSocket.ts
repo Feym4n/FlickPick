@@ -255,7 +255,8 @@ export function useGroupSocket(groupCode: string, participantName: string) {
             const votesResponse = await fetch(`/api/groups-firebase/${groupCode}/votes`);
             if (votesResponse.ok) {
               const votesData = await votesResponse.json();
-              if (votesData.success && votesData.data && votesData.data.length > 0) {
+              const votes = votesData.data?.votes || [];
+              if (votesData.success && votes.length > 0) {
                 // Голосование начато - перенаправляем
                 console.log('Voting already started, redirecting after reconnect...');
                 const nickname = sessionStorage.getItem(`nickname_${groupCode}`) || participantName;
