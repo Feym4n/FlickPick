@@ -177,6 +177,22 @@ export async function getFilmsByGroup(groupId: string): Promise<Film[]> {
   }
 }
 
+export async function deleteFilmById(filmId: string): Promise<void> {
+  try {
+    const admin = getAdminDb();
+    if (admin) {
+      await admin.collection(FILMS_COLLECTION).doc(filmId).delete();
+    } else {
+      const filmRef = doc(db, FILMS_COLLECTION, filmId);
+      await deleteDoc(filmRef);
+    }
+    console.log(`Film ${filmId} deleted`);
+  } catch (error) {
+    console.error('Ошибка удаления фильма:', error);
+    throw new Error('Не удалось удалить фильм');
+  }
+}
+
 // ===== ГОЛОСА =====
 
 export interface VoteData {

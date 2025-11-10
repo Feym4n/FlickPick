@@ -542,15 +542,24 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
           transition={{ delay: 0.2 }}
           className="flex justify-center"
         >
-          {group && getParticipantName() === (group.createdBy || '') && (
-            <Button
-              onClick={handleNewVoting}
-              className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3"
-            >
-              <RotateCcw className="h-5 w-5 mr-2" />
-              Начать новое голосование
-            </Button>
-          )}
+          {group && (() => {
+            // Проверяем, является ли пользователь создателем или эффективным создателем
+            const participantName = getParticipantName();
+            const participants = group.participants || [];
+            const effectiveCreator = (group.createdBy && participants.includes(group.createdBy))
+              ? group.createdBy
+              : (participants.length > 0 ? participants[0] : null);
+            
+            return effectiveCreator === participantName && (
+              <Button
+                onClick={handleNewVoting}
+                className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3"
+              >
+                <RotateCcw className="h-5 w-5 mr-2" />
+                Начать новое голосование
+              </Button>
+            );
+          })()}
         </motion.div>
       </div>
     </div>

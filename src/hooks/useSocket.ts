@@ -158,8 +158,13 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       }
     };
 
-    const handleFilmRemoved = (data: { filmId: string; films: any[] }) => {
-      setFilms(data.films);
+    const handleFilmRemoved = (data: { filmId: string; films: any[] | null }) => {
+      if (data.films && Array.isArray(data.films)) {
+        setFilms(data.films);
+      } else if (data.filmId) {
+        // Если сервер не отправил полный список, удаляем фильм локально
+        setFilms(prev => prev.filter(f => f.id !== data.filmId));
+      }
     };
 
     const handleVoteCast = (data: { participant: string; filmId: number; vote: 'like' | 'dislike' }) => {
@@ -298,6 +303,12 @@ export function useGroupSocket(groupCode: string, participantName: string) {
     }
   };
 
+  const removeFilm = (filmId: string) => {
+    if (socket) {
+      socket.emit('film:remove', { groupCode, filmId });
+    }
+  };
+
   const castVote = (filmId: number, vote: 'like' | 'dislike') => {
     if (socket) {
       socket.emit('voting:vote', { groupCode, filmId, vote });
@@ -329,6 +340,7 @@ export function useGroupSocket(groupCode: string, participantName: string) {
     films,
     completedParticipants,
     addFilm,
+    removeFilm,
     castVote,
     startVoting,
     completeVoting

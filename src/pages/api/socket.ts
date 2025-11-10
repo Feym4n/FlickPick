@@ -301,6 +301,69 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
       }
     });
 
+    // Удаление фильма (только тот, кто добавил, может удалить)
+    socket.on('film:remove', async (data) => {
+      try {
+        const { groupCode, filmId } = data;
+        
+        // Валидация
+        if (!groupCode || typeof groupCode !== 'string') {
+          socket.emit('notification:error', { message: 'Неверный код группы' });
+          return;
+        }
+        
+        if (!filmId || typeof filmId !== 'string') {
+          socket.emit('notification:error', { message: 'Неверный ID фильма' });
+          return;
+        }
+
+        const sanitizedCode = groupCode.trim().toUpperCase().slice(0, 10);
+        if (!/^[A-Z0-9]{5}$/.test(sanitizedCode)) {
+          socket.emit('notification:error', { message: 'Неверный формат кода группы' });
+          return;
+        }
+        
+        // Проверяем группу
+        const group = await getGroupByCode(sanitizedCode);
+        if (!group) {
+          socket.emit('notification:error', { message: 'Группа не найдена' });
+          return;
+        }
+
+        // Получаем фильм из базы данных
+        const { getFilmsByGroup, deleteFilmById } = await import('@/lib/database');
+        const films = await getFilmsByGroup(group.id);
+        const film = films.find(f => f.id === filmId);
+        
+        if (!film) {
+          socket.emit('notification:error', { message: 'Фильм не найден' });
+          return;
+        }
+
+        // Проверяем, что пользователь добавил этот фильм
+        if (film.addedBy !== socket.data.participantName) {
+          socket.emit('notification:error', { message: 'Вы можете удалить только свои фильмы' });
+          return;
+        }
+
+        // Удаляем фильм из базы данных
+        await deleteFilmById(filmId);
+
+        // Уведомляем всех участников группы
+        io.to(sanitizedCode).emit('group:film-removed', {
+          filmId: filmId,
+          films: null // Клиенты обновят локально
+        });
+
+        console.log(`Film ${filmId} removed from group ${sanitizedCode} by ${socket.data.participantName}`);
+      } catch (error) {
+        console.error('Error removing film:', error);
+        socket.emit('notification:error', { 
+          message: error instanceof Error ? error.message : 'Ошибка удаления фильма' 
+        });
+      }
+    });
+
     // Начало голосования (только создатель может начать)
     socket.on('voting:start', async (data) => {
       try {

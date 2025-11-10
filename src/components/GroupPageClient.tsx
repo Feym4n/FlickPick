@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, Plus, Play, Film as FilmIcon, Wifi, WifiOff, Copy, Check } from "lucide-react";
+import { ArrowLeft, Users, Plus, Play, Film as FilmIcon, Wifi, WifiOff, Copy, Check, X } from "lucide-react";
 import FilmSearch from "@/components/FilmSearch";
 import { KinopoiskFilm } from "@/services/kinopoisk";
 import { Film } from "@/lib/database";
@@ -65,6 +65,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     participants, 
     films, 
     addFilm: addFilmRealtime,
+    removeFilm: removeFilmRealtime,
     startVoting: startVotingRealtime
   } = useGroupSocket(groupCode, participantName);
 
@@ -128,8 +129,11 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
         });
         return merged;
       });
+    } else if (films.length === 0 && initialFilms.length > 0) {
+      // Если фильмы удалены через WebSocket, синхронизируем
+      setInitialFilms([]);
     }
-  }, [films]);
+  }, [films, initialFilms.length]);
 
   // Синхронизация при подключении WebSocket и проверка состояния голосования
   useEffect(() => {
@@ -275,12 +279,20 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
       }
     };
 
+    const handleFilmRemoved = (data: { filmId: string; films: Film[] | null }) => {
+      if (data.filmId) {
+        setInitialFilms(prev => prev.filter(f => f.id !== data.filmId));
+      }
+    };
+
     socket.on('group:participant-joined', handleParticipantJoined);
     socket.on('group:participant-left', handleParticipantLeft);
+    socket.on('group:film-removed', handleFilmRemoved);
 
     return () => {
       socket.off('group:participant-joined', handleParticipantJoined);
       socket.off('group:participant-left', handleParticipantLeft);
+      socket.off('group:film-removed', handleFilmRemoved);
     };
   }, [socket]);
 
@@ -572,6 +584,33 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
                              target.src = '/placeholder-poster.jpg';
                            }}
                          />
+                         
+                         {/* Кнопка удаления (только для своих фильмов) */}
+                         {film.addedBy === participantName && (
+                           <button
+                             onClick={() => {
+                               if (confirm(`Удалить фильм "${film.title}"?`)) {
+                                 if (socket && socket.connected && removeFilmRealtime) {
+                                   removeFilmRealtime(film.id);
+                                 } else {
+                                   // Fallback через API
+                                   fetch(`/api/groups-firebase/${groupCode}/films/${film.id}`, {
+                                     method: 'DELETE',
+                                   }).then(() => {
+                                     setInitialFilms(prev => prev.filter(f => f.id !== film.id));
+                                   }).catch(err => {
+                                     console.error('Ошибка удаления фильма:', err);
+                                     alert('Ошибка удаления фильма');
+                                   });
+                                 }
+                               }
+                             }}
+                             className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-colors z-10"
+                             title="Удалить фильм"
+                           >
+                             <X className="h-4 w-4" />
+                           </button>
+                         )}
                          
                          {/* Рейтинг */}
                          {film.rating && (
