@@ -21,6 +21,7 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
   const [initialFilms, setInitialFilms] = useState<Film[]>([]);
   
   // Получаем никнейм из URL параметров, sessionStorage или используем дефолтный
+  // ВАЖНО: Сохраняем имя в sessionStorage для использования при переподключении
   const [participantName] = useState(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -38,10 +39,24 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
         return nicknameFromStorage;
       }
       
-      return 'Участник';
+      // Если имени нет, генерируем уникальное и сохраняем
+      // Это предотвратит потерю имени при переподключении
+      const generatedName = `Участник_${Date.now()}`;
+      sessionStorage.setItem(`nickname_${groupCode}`, generatedName);
+      return generatedName;
     }
     return 'Участник';
   });
+
+  // Убеждаемся, что имя всегда сохранено в sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && participantName) {
+      const savedName = sessionStorage.getItem(`nickname_${groupCode}`);
+      if (!savedName || savedName !== participantName) {
+        sessionStorage.setItem(`nickname_${groupCode}`, participantName);
+      }
+    }
+  }, [participantName, groupCode]);
 
   // Используем WebSocket для реального времени
   const { 
