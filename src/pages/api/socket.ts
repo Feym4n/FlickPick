@@ -411,8 +411,27 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponseS
           return;
         }
 
-        // Проверяем эффективного создателя (если создатель вышел, права у первого участника)
-        const participants = group.participants || [];
+        // Проверяем эффективного создателя
+        // Используем участников из голосов, если они есть (более надежный источник)
+        const { getVotesByGroup } = await import('@/lib/database');
+        const votes = await getVotesByGroup(group.id);
+        
+        let participants: string[] = [];
+        if (votes.length > 0) {
+          // Используем участников из голосов как источник истины
+          const uniqueParticipants = new Set<string>();
+          votes.forEach(vote => {
+            if (vote.participantId) {
+              uniqueParticipants.add(vote.participantId);
+            }
+          });
+          participants = Array.from(uniqueParticipants);
+        } else {
+          // Если голосов нет, используем участников из группы
+          participants = group.participants || [];
+        }
+        
+        // Определяем эффективного создателя
         const effectiveCreator = (group.createdBy && participants.includes(group.createdBy))
           ? group.createdBy 
           : (participants.length > 0 ? participants[0] : null);

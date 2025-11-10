@@ -36,6 +36,7 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
   const [matchingStats, setMatchingStats] = useState<ExtendedMatchingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [votesData, setVotesData] = useState<{ data?: { votes?: Vote[] } } | null>(null);
   
   // Получаем никнейм из URL или sessionStorage
   const getParticipantName = (): string => {
@@ -76,10 +77,11 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
 
         // Загружаем голоса
         const votesResponse = await fetch(`/api/groups-firebase/${normalizedCode}/votes`);
-        const votesData = await votesResponse.json();
+        const votesDataResponse = await votesResponse.json();
+        setVotesData(votesDataResponse);
 
         // Вычисляем совпадения и результаты
-        const votes = votesData.data?.votes || [];
+        const votes = votesDataResponse.data?.votes || [];
         const films = groupData.data.films || [];
         
         // ВСЕГДА используем участников из голосов как единственный источник истины
@@ -542,23 +544,46 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
           transition={{ delay: 0.2 }}
           className="flex justify-center"
         >
-          {group && (() => {
-            // Проверяем, является ли пользователь создателем или эффективным создателем
+          {group && matchingStats && (() => {
+            // Проверяем, является ли пользователь создателем
+            // Используем участников из голосов для определения эффективного создателя
             const participantName = getParticipantName();
-            const participants = group.participants || [];
+            
+            // Получаем участников из голосов (более надежный источник)
+            const votes = votesData?.data?.votes || [];
+            let participants: string[] = [];
+            
+            if (votes.length > 0) {
+              const uniqueParticipants = new Set<string>();
+              votes.forEach((vote: Vote) => {
+                if (vote.participantId) {
+                  uniqueParticipants.add(vote.participantId);
+                }
+              });
+              participants = Array.from(uniqueParticipants);
+            } else {
+              // Если голосов нет, используем участников из группы
+              participants = group.participants || [];
+            }
+            
+            // Определяем эффективного создателя
             const effectiveCreator = (group.createdBy && participants.includes(group.createdBy))
               ? group.createdBy
               : (participants.length > 0 ? participants[0] : null);
             
-            return effectiveCreator === participantName && (
-              <Button
-                onClick={handleNewVoting}
-                className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3"
-              >
-                <RotateCcw className="h-5 w-5 mr-2" />
-                Начать новое голосование
-              </Button>
-            );
+            // Показываем кнопку только если пользователь является эффективным создателем
+            if (effectiveCreator === participantName) {
+              return (
+                <Button
+                  onClick={handleNewVoting}
+                  className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3"
+                >
+                  <RotateCcw className="h-5 w-5 mr-2" />
+                  Начать новое голосование
+                </Button>
+              );
+            }
+            return null;
           })()}
         </motion.div>
       </div>
