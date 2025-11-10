@@ -223,9 +223,14 @@ export function useGroupSocket(groupCode: string, participantName: string) {
     socket.on('group:reset', handleGroupReset);
 
     // Функция для подключения к группе
+    // ВАЖНО: Используем имя из sessionStorage при переподключении
     const joinGroup = () => {
       if (socket.connected) {
-        socket.emit('group:join', { groupCode, participantName });
+        // При переподключении используем сохраненное имя из sessionStorage
+        const savedName = typeof window !== 'undefined' 
+          ? sessionStorage.getItem(`nickname_${groupCode}`) || participantName
+          : participantName;
+        socket.emit('group:join', { groupCode, participantName: savedName });
       }
     };
 
@@ -236,6 +241,12 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       // Если еще не подключен, ждем подключения
       socket.once('connect', joinGroup);
     }
+
+    // Также обрабатываем переподключение
+    socket.on('reconnect' as any, () => {
+      console.log('Socket reconnected, rejoining group');
+      joinGroup();
+    });
 
     // Очистка при размонтировании
     return () => {

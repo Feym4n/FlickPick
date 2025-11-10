@@ -319,16 +319,33 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
     }
   };
 
-  const handleStartVoting = () => {
-    if (displayFilms.length === 0) {
-      alert('Добавьте хотя бы один фильм перед началом голосования');
+  const handleStartVoting = async () => {
+    // Проверяем условия перед началом голосования
+    if (displayFilms.length < 2) {
+      alert('Добавьте минимум 2 фильма перед началом голосования');
       return;
     }
     
-    // Всегда пытаемся использовать WebSocket, если он есть
-    // Socket.IO сам обработает отправку при подключении
-    if (socket && startVotingRealtime) {
-      startVotingRealtime(displayFilms);
+    if (displayParticipants.length < 2) {
+      alert('Нужно минимум 2 участника для начала голосования');
+      return;
+    }
+
+    // Проверяем, является ли пользователь создателем
+    if (!isCreator) {
+      alert('Только создатель группы может начать голосование');
+      return;
+    }
+    
+    // Всегда пытаемся использовать WebSocket, если он есть и подключен
+    if (socket && socket.connected && startVotingRealtime) {
+      try {
+        startVotingRealtime(displayFilms);
+      } catch (error) {
+        console.error('Ошибка начала голосования через WebSocket:', error);
+        // Fallback: переход только для текущего пользователя
+        window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
+      }
     } else {
       // Fallback: переход только для текущего пользователя
       window.location.href = `/vote/${groupCode}?nickname=${encodeURIComponent(participantName)}`;
