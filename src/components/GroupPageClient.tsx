@@ -251,13 +251,34 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
 
   const handleAddFilm = async (film: KinopoiskFilm) => {
     try {
-      // Всегда пытаемся использовать WebSocket, если он есть
-      // Socket.IO сам обработает очередь, если еще не подключен
-      if (socket) {
+      // Оптимистичное обновление UI - показываем фильм сразу
+      const optimisticFilm = {
+        id: `temp-${Date.now()}`,
+        kinopoiskId: film.kinopoiskId,
+        title: film.nameRu || film.nameEn || 'Без названия',
+        year: film.year,
+        poster: film.posterUrl || '',
+        description: film.description || '',
+        rating: film.ratingKinopoisk,
+        addedBy: participantName,
+        addedAt: new Date().toISOString()
+      };
+      
+      // Добавляем фильм в локальное состояние сразу
+      setInitialFilms(prev => {
+        // Проверяем, нет ли уже такого фильма
+        if (prev.some(f => f.kinopoiskId === film.kinopoiskId)) {
+          return prev;
+        }
+        return [...prev, optimisticFilm];
+      });
+      setShowFilmSearch(false);
+
+      // Отправляем через WebSocket или API
+      if (socket && socket.connected) {
         addFilmRealtime(film);
-        setShowFilmSearch(false);
       } else {
-        // Fallback на обычный API, если socket вообще нет
+        // Fallback на обычный API
         const response = await fetch(`/api/groups-firebase/${groupCode}/films`, {
           method: 'POST',
           headers: {
@@ -268,14 +289,16 @@ export default function GroupPageClient({ groupCode }: GroupPageClientProps) {
 
         const data = await response.json();
 
-        if (data.success) {
-          setShowFilmSearch(false);
-        } else {
+        if (!data.success) {
+          // Откатываем оптимистичное обновление при ошибке
+          setInitialFilms(prev => prev.filter(f => f.id !== optimisticFilm.id));
           alert(data.error || 'Ошибка добавления фильма');
         }
       }
     } catch (error) {
       console.error('Ошибка добавления фильма:', error);
+      // Откатываем оптимистичное обновление при ошибке
+      setInitialFilms(prev => prev.filter(f => f.id?.toString().startsWith('temp-')));
       alert('Ошибка добавления фильма');
     }
   };

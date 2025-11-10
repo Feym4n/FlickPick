@@ -118,13 +118,16 @@ export interface FilmData {
 
 export async function addFilmToGroup(filmData: Omit<FilmData, 'addedAt'>): Promise<string> {
   try {
-    // Проверяем, не существует ли уже такой фильм в группе
-    const existingFilms = await getFilmsByGroup(filmData.groupId);
-    const isDuplicate = existingFilms.some(film => 
-      film.kinopoiskId === filmData.kinopoiskId
+    // Оптимизация: проверяем дубликаты через запрос, а не загружая все фильмы
+    const filmsRef = collection(db, FILMS_COLLECTION);
+    const q = query(
+      filmsRef,
+      where('groupId', '==', filmData.groupId),
+      where('kinopoiskId', '==', filmData.kinopoiskId)
     );
+    const snapshot = await getDocs(q);
     
-    if (isDuplicate) {
+    if (!snapshot.empty) {
       throw new Error('Этот фильм уже добавлен в группу');
     }
 

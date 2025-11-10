@@ -141,8 +141,21 @@ export function useGroupSocket(groupCode: string, participantName: string) {
       setParticipants(data.participants);
     };
 
-    const handleFilmAdded = (data: { film: any; films: any[] }) => {
-      setFilms(data.films);
+    const handleFilmAdded = (data: { film: any; films: any[] | null }) => {
+      // Если сервер отправил полный список, используем его
+      // Иначе добавляем только новый фильм (оптимизация)
+      if (data.films && Array.isArray(data.films)) {
+        setFilms(data.films);
+      } else if (data.film) {
+        // Оптимистичное обновление: добавляем только новый фильм
+        setFilms(prev => {
+          // Проверяем, нет ли уже такого фильма
+          if (prev.some(f => f.kinopoiskId === data.film.kinopoiskId)) {
+            return prev;
+          }
+          return [...prev, data.film];
+        });
+      }
     };
 
     const handleFilmRemoved = (data: { filmId: string; films: any[] }) => {
