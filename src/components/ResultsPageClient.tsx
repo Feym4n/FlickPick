@@ -81,18 +81,24 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
         // Вычисляем совпадения и результаты
         const votes = votesData.data?.votes || [];
         const films = groupData.data.films || [];
-        let participants = Array.isArray(groupData.data.participants) ? groupData.data.participants : [];
         
-        // Если участники удалены из группы (после disconnect), восстанавливаем их из голосов
-        if (participants.length === 0 && votes.length > 0) {
-          const uniqueParticipants = new Set<string>();
+        // ВСЕГДА используем участников из голосов как единственный источник истины
+        // Это гарантирует, что все пользователи видят одинаковые результаты
+        // даже если участники отключились и были удалены из группы
+        let participants: string[] = [];
+        if (votes.length > 0) {
+          const uniqueParticipantsFromVotes = new Set<string>();
           votes.forEach((vote: Vote) => {
             if (vote.participantId) {
-              uniqueParticipants.add(vote.participantId);
+              uniqueParticipantsFromVotes.add(vote.participantId);
             }
           });
-          participants = Array.from(uniqueParticipants);
-          console.log('Participants restored from votes:', participants);
+          participants = Array.from(uniqueParticipantsFromVotes);
+          console.log('Participants from votes (source of truth):', participants);
+        } else {
+          // Если нет голосов, используем участников из группы (fallback)
+          participants = Array.isArray(groupData.data.participants) ? groupData.data.participants : [];
+          console.log('No votes found, using participants from group:', participants);
         }
         
         // Логирование для отладки
@@ -107,18 +113,32 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
         if (films.length > 0 && participants.length > 0) {
           
           // Проверяем SUPER MATCH: все участники выбрали один фильм
-          const votesByFilm = new Map<number, { likes: number; dislikes: number; voters: string[] }>();
+          // Используем Set для подсчета уникальных участников
+          const votesByFilm = new Map<number, { 
+            likes: Set<string>; // Уникальные участники, которые лайкнули
+            dislikes: Set<string>; // Уникальные участники, которые дизлайкнули
+            voters: string[] 
+          }>();
+          
           votes.forEach((vote: Vote) => {
             const filmId = Number(vote.filmId);
             if (!votesByFilm.has(filmId)) {
-              votesByFilm.set(filmId, { likes: 0, dislikes: 0, voters: [] });
+              votesByFilm.set(filmId, { 
+                likes: new Set<string>(), 
+                dislikes: new Set<string>(), 
+                voters: [] 
+              });
             }
             const filmVotes = votesByFilm.get(filmId)!;
+            
+            // Добавляем участника в соответствующий Set (лайк или дизлайк)
             if (vote.vote === 'like') {
-              filmVotes.likes++;
+              filmVotes.likes.add(vote.participantId);
             } else {
-              filmVotes.dislikes++;
+              filmVotes.dislikes.add(vote.participantId);
             }
+            
+            // Добавляем в общий список voters (для отображения)
             if (!filmVotes.voters.includes(vote.participantId)) {
               filmVotes.voters.push(vote.participantId);
             }
@@ -132,14 +152,28 @@ export default function ResultsPageClient({ groupCode }: ResultsPageClientProps)
             const filmVotes = votesByFilm.get(Number(film.kinopoiskId));
             if (!filmVotes) return;
 
-            // SUPER MATCH: все участники лайкнули
-            if (filmVotes.likes === participants.length && filmVotes.dislikes === 0) {
-              superMatch = { film, voters: filmVotes.voters, likes: filmVotes.likes };
+            // Подсчитываем уникальных участников
+            const uniqueLikes = filmVotes.likes.size;
+            const uniqueDislikes = filmVotes.dislikes.size;
+
+            // SUPER MATCH: все участники лайкнули (уникальных лайков = количеству участников)
+            if (uniqueLikes === participants.length && uniqueDislikes === 0) {
+              superMatch = { 
+                film, 
+                voters: Array.from(filmVotes.likes), 
+                likes: uniqueLikes 
+              };
             }
 
-            // Лучший фильм по количеству лайков
-            if (!bestMatch || filmVotes.likes > bestMatch.likes) {
-              bestMatch = { film, likes: filmVotes.likes, dislikes: filmVotes.dislikes, voters: filmVotes.voters };
+            // Лучший фильм по количеству уникальных лайков
+            const currentBestLikes = bestMatch ? bestMatch.likes : 0;
+            if (!bestMatch || uniqueLikes > currentBestLikes) {
+              bestMatch = { 
+                film, 
+                likes: uniqueLikes, 
+                dislikes: uniqueDislikes, 
+                voters: Array.from(filmVotes.likes) 
+              };
             }
           });
 
